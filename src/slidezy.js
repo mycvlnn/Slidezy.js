@@ -3,6 +3,7 @@ Slidezy.prototype._createTrack = function () {
     this.track.classList.add("slidezy-track");
     this.slides.forEach((slide) => {
         slide.classList.add("slidezy-slide");
+        slide.style.flexBasis = `${100 / this.options.items}%`;
         this.track.appendChild(slide);
     });
 
@@ -25,6 +26,8 @@ Slidezy.prototype._createNavigation = function () {
 };
 
 Slidezy.prototype._checkDisabledNavigation = function () {
+    if (this.options.loop) return; // Trong trường hợp loop thì không cần kiểm tra
+
     const updateButtonState = (button, condition) => {
         if (condition) {
             button.setAttribute("disabled", true);
@@ -36,15 +39,24 @@ Slidezy.prototype._checkDisabledNavigation = function () {
     };
 
     updateButtonState(this.prevButton, this.currentSlideIndex === 0);
-    updateButtonState(this.nextButton, this.currentSlideIndex >= this.slides.length - 3);
+    updateButtonState(
+        this.nextButton,
+        this.currentSlideIndex >= this.slides.length - this.options.items
+    );
 };
 
 Slidezy.prototype.moveSlide = function (step) {
-    this.currentSlideIndex = Math.min(
-        Math.max(this.currentSlideIndex + step, 0),
-        this.slides.length - 3
-    );
-    this.offset = -(this.currentSlideIndex * (100 / 3));
+    if (this.options.loop) {
+        this.currentSlideIndex =
+            (this.currentSlideIndex + step + this.slides.length) % this.slides.length;
+    } else {
+        this.currentSlideIndex = Math.min(
+            Math.max(this.currentSlideIndex + step, 0),
+            this.slides.length - this.options.items
+        );
+    }
+
+    this.offset = -(this.currentSlideIndex * (100 / this.options.items));
     this.track.style.transform = `translateX(${this.offset}%)`;
     this._checkDisabledNavigation();
 };
@@ -58,7 +70,7 @@ Slidezy.prototype._init = function () {
 function Slidezy(selector, options) {
     this.options = Object.assign(
         {
-            items: 3,
+            items: 1,
             loop: false,
         },
         options
@@ -76,4 +88,5 @@ function Slidezy(selector, options) {
 
 const mySlider = new Slidezy("#my-slider", {
     loop: true,
+    items: 1,
 });
