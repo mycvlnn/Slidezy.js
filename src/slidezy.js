@@ -16,15 +16,37 @@ Slidezy.prototype._createNavigation = function () {
     this.nextButton.classList.add("slidezy-next");
     this.prevButton.innerText = "<";
     this.nextButton.innerText = ">";
-    this.container.appendChild(this.prevButton);
-    this.container.appendChild(this.nextButton);
+    this.container.append(this.prevButton, this.nextButton);
+    this._checkDisabledNavigation();
 
+    // Add events
     this.prevButton.onclick = () => this.moveSlide(-1);
     this.nextButton.onclick = () => this.moveSlide(1);
 };
 
+Slidezy.prototype._checkDisabledNavigation = function () {
+    const updateButtonState = (button, condition) => {
+        if (condition) {
+            button.setAttribute("disabled", true);
+            button.classList.add("disabled");
+        } else {
+            button.removeAttribute("disabled");
+            button.classList.remove("disabled");
+        }
+    };
+
+    updateButtonState(this.prevButton, this.currentSlideIndex === 0);
+    updateButtonState(this.nextButton, this.currentSlideIndex >= this.slides.length - 3);
+};
+
 Slidezy.prototype.moveSlide = function (step) {
-    console.log(`Moving slide by ${step}`);
+    this.currentSlideIndex = Math.min(
+        Math.max(this.currentSlideIndex + step, 0),
+        this.slides.length - 3
+    );
+    this.offset = -(this.currentSlideIndex * (100 / 3));
+    this.track.style.transform = `translateX(${this.offset}%)`;
+    this._checkDisabledNavigation();
 };
 
 Slidezy.prototype._init = function () {
@@ -36,9 +58,7 @@ Slidezy.prototype._init = function () {
 function Slidezy(selector, options) {
     this.options = Object.assign(
         {
-            duration: 300,
-            autoPlay: false,
-            autoPlayInterval: 3000,
+            items: 3,
             loop: false,
         },
         options
@@ -55,8 +75,5 @@ function Slidezy(selector, options) {
 }
 
 const mySlider = new Slidezy("#my-slider", {
-    duration: 500,
-    autoPlay: true,
-    autoPlayInterval: 2000,
     loop: true,
 });
