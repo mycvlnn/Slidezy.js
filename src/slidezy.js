@@ -20,58 +20,80 @@ Slidezy.prototype._createTrack = function () {
 };
 
 Slidezy.prototype._createNavigation = function () {
-    this.prevButton = document.createElement("button");
-    this.nextButton = document.createElement("button");
-    this.prevButton.classList.add("slidezy-prev");
-    this.nextButton.classList.add("slidezy-next");
-    this.prevButton.innerText = "<";
-    this.nextButton.innerText = ">";
-    this.container.append(this.prevButton, this.nextButton);
+    if (!this.options.arrows) return;
 
-    // Add events
-    this.prevButton.onclick = () => this.moveSlide(-1);
-    this.nextButton.onclick = () => this.moveSlide(1);
+    if (typeof this.options.renderPrevArrow === "function") {
+        this.prevButton = this.options.renderPrevArrow({
+            className: "slidezy-prev",
+        });
+    } else {
+        this.prevButton = document.createElement("button");
+        this.prevButton.classList.add("slidezy-prev");
+        this.prevButton.innerText = "<";
+    }
+
+    if (this.options.renderNextArrow) {
+        this.nextButton = this.options.renderNextArrow({
+            className: "slidezy-next",
+        });
+    } else {
+        this.nextButton = document.createElement("button");
+        this.nextButton.classList.add("slidezy-next");
+        this.nextButton.innerText = ">";
+    }
+
+    if (this.prevButton && this.nextButton) {
+        // Add events
+        this.prevButton.onclick = () => this.moveSlide(-this.options.slidesToScroll);
+        this.nextButton.onclick = () => this.moveSlide(this.options.slidesToScroll);
+
+        this.container.append(this.prevButton, this.nextButton);
+    }
 };
 
 Slidezy.prototype._checkDisabledNavigation = function () {
     if (this.options.loop) return; // Trong trường hợp loop thì không cần kiểm tra
 
-    const updateButtonState = (button, condition) => {
-        if (condition) {
-            button.setAttribute("disabled", true);
-            button.classList.add("disabled");
-        } else {
-            button.removeAttribute("disabled");
-            button.classList.remove("disabled");
-        }
-    };
+    if (this.currentSlideIndex <= 0) {
+        this.prevDisabled = true;
+        this.prevButton.setAttribute("disabled", true);
+        this.prevButton.classList.add("disabled");
+    } else {
+        this.prevDisabled = false;
+        this.prevButton.removeAttribute("disabled");
+        this.prevButton.classList.remove("disabled");
+    }
 
-    updateButtonState(this.prevButton, this.currentSlideIndex === 0);
-    updateButtonState(
-        this.nextButton,
-        this.currentSlideIndex >= this.slides.length - this.options.items
-    );
+    if (this.currentSlideIndex >= this.slides.length - this.options.items) {
+        this.nextDisabled = true;
+        this.nextButton.setAttribute("disabled", true);
+        this.nextButton.classList.add("disabled");
+    } else {
+        this.nextDisabled = false;
+        this.nextButton.removeAttribute("disabled");
+        this.nextButton.classList.remove("disabled");
+    }
 };
 
 // Hàm thực hiện cập nhật vị trí của track
 Slidezy.prototype._updatePosition = function (instant = false) {
     this.offset = -(this.currentSlideIndex * (100 / this.options.items));
     this.track.style.transform = `translateX(${this.offset}%)`;
-    this.track.style.transition = instant ? "none" : "transform 0.3s ease";
+    this.track.style.transition = instant ? "none" : "transform 0.5s ease";
 };
 
 // Hàm thực hiện di chuyển slide
 // step = 1: next, step = -1: prev
 Slidezy.prototype.moveSlide = function (step) {
     if (this._isTransitioning) return;
+    const maxIndex = this.slides.length - this.options.items;
+    this.currentSlideIndex = Math.min(Math.max(this.currentSlideIndex + step, 0), maxIndex);
 
     // Trường hợp cho phép loop
     if (this.options.loop) {
         this._isTransitioning = true;
-        this.currentSlideIndex =
-            (this.currentSlideIndex + step + this.slides.length) % this.slides.length;
+
         this.track.ontransitionend = () => {
-            const maxIndex = this.slides.length - this.options.items;
             if (this.currentSlideIndex <= 0) {
                 this.currentSlideIndex = maxIndex - this.options.items;
                 this._updatePosition(true);
@@ -81,16 +103,24 @@ Slidezy.prototype.moveSlide = function (step) {
             }
             this._isTransitioning = false;
         };
-    } else {
-        // Trường hợp thông thường
-        this.currentSlideIndex = Math.min(
-            Math.max(this.currentSlideIndex + step, 0),
-            this.slides.length - this.options.items
-        );
     }
 
     this._updatePosition();
     this._checkDisabledNavigation();
+};
+
+Slidezy.prototype._autoplay = function () {
+    if (this.options.autoplay) {
+        this.autoplayInterval = setInterval(() => {
+            this.moveSlide(this.options.slidesToScroll);
+        }, this.options.autoplaySpeed);
+        this.container.onmouseenter = () => {
+            clearInterval(this.autoplayInterval);
+        };
+        this.container.onmouseleave = () => {
+            this._autoplay();
+        };
+    }
 };
 
 Slidezy.prototype._init = function () {
@@ -99,6 +129,7 @@ Slidezy.prototype._init = function () {
     this._createNavigation();
     this._checkDisabledNavigation();
     this._updatePosition();
+    this._autoplay();
 };
 
 function Slidezy(selector, options) {
@@ -106,6 +137,14 @@ function Slidezy(selector, options) {
         {
             items: 1,
             loop: false,
+            slidesToScroll: 1,
+            autoplay: false,
+            autoplaySpeed: 3000,
+            dots: false,
+            arrows: true,
+            renderPrevArrow: null,
+            renderNextArrow: null,
+            renderDots: null,
         },
         options
     );
@@ -116,6 +155,8 @@ function Slidezy(selector, options) {
 
     this.slides = Array.from(this.container.children);
     this.currentSlideIndex = this.options.loop ? this.options.items : 0;
+    this.prevDisabled = false;
+    this.nextDisabled = false;
 
     this._init();
 }
@@ -123,4 +164,9 @@ function Slidezy(selector, options) {
 const mySlider = new Slidezy("#my-slider", {
     loop: true,
     items: 3,
+    slidesToScroll: 1,
+    autoplay: false,
+    autoplaySpeed: 5000,
+    dots: true,
+    arrows: true,
 });
