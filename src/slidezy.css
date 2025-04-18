@@ -1,7 +1,10 @@
 .slidezy-wrapper {
-    position: relative;
     width: 100%;
     overflow: hidden;
+}
+
+.slidezy-content {
+    position: relative;
 }
 
 .slidezy-track {
@@ -39,4 +42,38 @@
     pointer-events: none;
     opacity: 0.5;
     background: rgba(0, 0, 0, 0.1);
+}
+
+.slidezy-dots {
+    display: flex;
+    align-items: center;
+    justify-self: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.slidezy-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+    cursor: pointer;
+    border: none;
+}
+
+.slidezy-dot.active {
+    background: #333;
+}
+
+.slidezy-dot.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.slidezy-dot:hover {
+    background: #aaa;
+}
+.slidezy-dot.active:hover {
+    background: #555;
 }

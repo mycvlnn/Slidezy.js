@@ -1,3 +1,9 @@
+Slidezy.prototype._createContent = function () {
+    this.content = document.createElement("div");
+    this.content.classList.add("slidezy-content");
+    this.container.appendChild(this.content);
+};
+
 Slidezy.prototype._createTrack = function () {
     this.track = document.createElement("div");
     this.track.classList.add("slidezy-track");
@@ -16,7 +22,7 @@ Slidezy.prototype._createTrack = function () {
         this.track.appendChild(slide);
     });
 
-    this.container.appendChild(this.track);
+    this.content.appendChild(this.track);
 };
 
 Slidezy.prototype._createNavigation = function () {
@@ -47,7 +53,7 @@ Slidezy.prototype._createNavigation = function () {
         this.prevButton.onclick = () => this.moveSlide(-this.options.slidesToScroll);
         this.nextButton.onclick = () => this.moveSlide(this.options.slidesToScroll);
 
-        this.container.append(this.prevButton, this.nextButton);
+        this.content.append(this.prevButton, this.nextButton);
     }
 };
 
@@ -80,6 +86,9 @@ Slidezy.prototype._updatePosition = function (instant = false) {
     this.offset = -(this.currentSlideIndex * (100 / this.options.items));
     this.track.style.transform = `translateX(${this.offset}%)`;
     this.track.style.transition = instant ? "none" : "transform 0.5s ease";
+    if (!instant) {
+        this._updateDot();
+    }
 };
 
 // Hàm thực hiện di chuyển slide
@@ -123,11 +132,53 @@ Slidezy.prototype._autoplay = function () {
     }
 };
 
+Slidezy.prototype._updateDot = function () {
+    if (!this.options.dots) return;
+    let realIndex = this.currentSlideIndex;
+    if (this.options.loop) {
+        const slideCount = this.slides.length - this.options.items * 2;
+        realIndex = (this.currentSlideIndex - this.options.items + slideCount) % slideCount;
+    }
+    const pageIndex = Math.floor(realIndex / this.options.items);
+
+    this.dots.forEach((dot, index) => {
+        dot.classList.toggle("active", index === pageIndex);
+    });
+};
+
+// Hàm tạo các dấu chấm
+Slidezy.prototype._createDots = function () {
+    if (!this.options.dots) return;
+    this.dotsContainer = document.createElement("div");
+    this.dotsContainer.classList.add("slidezy-dots");
+    const slideCount = this.slides.length - (this.options.loop ? this.options.items * 2 : 0);
+    const pageCount = Math.ceil(slideCount / this.options.items);
+    for (let i = 0; i < pageCount; i++) {
+        const dot = document.createElement("button");
+        dot.classList.add("slidezy-dot");
+        if (i === 0) dot.classList.add("active");
+
+        // Xử lý sự kiện click cho từng dot
+        dot.onclick = () => {
+            this.currentSlideIndex = this.options.loop
+                ? i * this.options.items + this.options.items
+                : i * this.options.items;
+            this._updatePosition();
+        };
+        this.dotsContainer.appendChild(dot);
+    }
+
+    this.dots = Array.from(this.dotsContainer.children);
+
+    this.container.appendChild(this.dotsContainer);
+};
+
 Slidezy.prototype._init = function () {
-    this.container.classList.add("slidezy-wrapper");
+    this._createContent();
     this._createTrack();
     this._createNavigation();
     this._checkDisabledNavigation();
+    this._createDots();
     this._updatePosition();
     this._autoplay();
 };
@@ -144,7 +195,6 @@ function Slidezy(selector, options) {
             arrows: true,
             renderPrevArrow: null,
             renderNextArrow: null,
-            renderDots: null,
         },
         options
     );
@@ -153,6 +203,7 @@ function Slidezy(selector, options) {
         throw new Error(`Container not found: ${selector}`);
     }
 
+    this.container.classList.add("slidezy-wrapper");
     this.slides = Array.from(this.container.children);
     this.currentSlideIndex = this.options.loop ? this.options.items : 0;
     this.prevDisabled = false;
