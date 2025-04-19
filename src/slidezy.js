@@ -28,36 +28,35 @@ Slidezy.prototype._createTrack = function () {
 Slidezy.prototype._createNavigation = function () {
     if (!this.options.arrows) return;
 
-    if (typeof this.options.renderPrevArrow === "function") {
-        this.prevButton = this.options.renderPrevArrow({
-            className: "slidezy-prev",
-        });
-    } else {
-        this.prevButton = document.createElement("button");
+    this.prevButton = this.options.prevArrowButton
+        ? document.querySelector(this.options.prevArrowButton)
+        : document.createElement("button");
+
+    this.nextButton = this.options.nextArrowButton
+        ? document.querySelector(this.options.nextArrowButton)
+        : document.createElement("button");
+
+    if (!this.options.prevArrowButton) {
         this.prevButton.classList.add("slidezy-prev");
-        this.prevButton.innerText = "<";
+        this.prevButton.innerText = this.options.arrowsText[0];
+        this.content.appendChild(this.prevButton);
     }
 
-    if (this.options.renderNextArrow) {
-        this.nextButton = this.options.renderNextArrow({
-            className: "slidezy-next",
-        });
-    } else {
-        this.nextButton = document.createElement("button");
+    if (!this.options.nextArrowButton) {
         this.nextButton.classList.add("slidezy-next");
-        this.nextButton.innerText = ">";
+        this.nextButton.innerText = this.options.arrowsText[1];
+        this.content.appendChild(this.nextButton);
     }
 
-    if (this.prevButton && this.nextButton) {
-        // Add events
+    // Add events
+    if (this.prevButton)
         this.prevButton.onclick = () => this.moveSlide(-this.options.slidesToScroll);
-        this.nextButton.onclick = () => this.moveSlide(this.options.slidesToScroll);
 
-        this.content.append(this.prevButton, this.nextButton);
-    }
+    if (this.nextButton)
+        this.nextButton.onclick = () => this.moveSlide(this.options.slidesToScroll);
 };
 
-Slidezy.prototype._checkDisabledNavigation = function () {
+Slidezy.prototype._checkDisabledNav = function () {
     if (this.options.loop) return; // Trong trường hợp loop thì không cần kiểm tra
 
     if (this.currentSlideIndex <= 0) {
@@ -79,6 +78,11 @@ Slidezy.prototype._checkDisabledNavigation = function () {
         this.nextButton.removeAttribute("disabled");
         this.nextButton.classList.remove("disabled");
     }
+};
+
+// Lấy ra số lượng slide nhìn bằng mắt thường thực tế mà không tính slide giả lập (2 đầu và 2 cuối)
+Slidezy.prototype._getRealSlideCount = function () {
+    return this.slides.length - (this.options.loop ? this.options.items * 2 : 0);
 };
 
 // Hàm thực hiện cập nhật vị trí của track
@@ -103,11 +107,12 @@ Slidezy.prototype.moveSlide = function (step) {
         this._isTransitioning = true;
 
         this.track.ontransitionend = () => {
-            if (this.currentSlideIndex <= 0) {
-                this.currentSlideIndex = maxIndex - this.options.items;
+            const slideCount = this._getRealSlideCount();
+            if (this.currentSlideIndex < this.options.items) {
+                this.currentSlideIndex += slideCount;
                 this._updatePosition(true);
-            } else if (this.currentSlideIndex >= maxIndex) {
-                this.currentSlideIndex = this.options.items;
+            } else if (this.currentSlideIndex > slideCount) {
+                this.currentSlideIndex -= slideCount;
                 this._updatePosition(true);
             }
             this._isTransitioning = false;
@@ -115,7 +120,7 @@ Slidezy.prototype.moveSlide = function (step) {
     }
 
     this._updatePosition();
-    this._checkDisabledNavigation();
+    this._checkDisabledNav();
 };
 
 Slidezy.prototype._autoplay = function () {
@@ -134,11 +139,10 @@ Slidezy.prototype._autoplay = function () {
 
 Slidezy.prototype._updateDot = function () {
     if (!this.options.dots) return;
-    let realIndex = this.currentSlideIndex;
-    if (this.options.loop) {
-        const slideCount = this.slides.length - this.options.items * 2;
-        realIndex = (this.currentSlideIndex - this.options.items + slideCount) % slideCount;
-    }
+    const slideCount = this._getRealSlideCount();
+    const realIndex = this.options.loop
+        ? (this.currentSlideIndex - this.options.items + slideCount) % slideCount
+        : this.currentSlideIndex;
     const pageIndex = Math.floor(realIndex / this.options.items);
 
     this.dots.forEach((dot, index) => {
@@ -151,7 +155,7 @@ Slidezy.prototype._createDots = function () {
     if (!this.options.dots) return;
     this.dotsContainer = document.createElement("div");
     this.dotsContainer.classList.add("slidezy-dots");
-    const slideCount = this.slides.length - (this.options.loop ? this.options.items * 2 : 0);
+    const slideCount = this._getRealSlideCount();
     const pageCount = Math.ceil(slideCount / this.options.items);
     for (let i = 0; i < pageCount; i++) {
         const dot = document.createElement("button");
@@ -177,7 +181,7 @@ Slidezy.prototype._init = function () {
     this._createContent();
     this._createTrack();
     this._createNavigation();
-    this._checkDisabledNavigation();
+    this._checkDisabledNav();
     this._createDots();
     this._updatePosition();
     this._autoplay();
@@ -193,8 +197,9 @@ function Slidezy(selector, options) {
             autoplaySpeed: 3000,
             dots: false,
             arrows: true,
-            renderPrevArrow: null,
-            renderNextArrow: null,
+            arrowsText: ["<", ">"],
+            prevArrowButton: null,
+            nextArrowButton: null,
         },
         options
     );
@@ -213,11 +218,17 @@ function Slidezy(selector, options) {
 }
 
 const mySlider = new Slidezy("#my-slider", {
-    loop: true,
-    items: 3,
-    slidesToScroll: 1,
+    loop: false,
+    items: 1,
+    slidesToScroll: 2,
     autoplay: false,
     autoplaySpeed: 5000,
     dots: true,
     arrows: true,
+    // prevArrowButton: ".nav-prev",
+    // nextArrowButton: ".nav-next",
+    // arrowsText: ["Lùi", "Tiến"],
 });
+
+// (6) 1 2 3 4 5 6 (1)
+//  0  1 2 3 4 5 6  7

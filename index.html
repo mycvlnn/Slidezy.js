@@ -38,6 +38,35 @@
             .slide-6 {
                 background: lightcoral;
             }
+
+            .custom-nav {
+                display: flex;
+                justify-content: center;
+                margin-top: 20px;
+            }
+
+            .custom-nav button {
+                padding: 10px 20px;
+                margin: 0 5px;
+                border: none;
+                background-color: #007bff;
+                color: white;
+                cursor: pointer;
+                border-radius: 5px;
+            }
+
+            .custom-nav button:hover {
+                background-color: #0056b3;
+            }
+
+            .custom-nav button:disabled {
+                background-color: #ccc;
+                cursor: not-allowed;
+            }
+
+            .custom-nav button:disabled:hover {
+                background-color: #ccc;
+            }
         </style>
     </head>
     <body>
@@ -49,6 +78,11 @@
             <div class="slide-5">Slide 5</div>
             <div class="slide-6">Slide 6</div>
         </div>
+        <div class="custom-nav">
+            <button class="nav-prev">Prev</button>
+            <button class="nav-next">Next</button>
+        </div>
+
         <script src="./src/slidezy.js"></script>
     </body>
 </html>
