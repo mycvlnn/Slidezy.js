@@ -129,7 +129,9 @@ Slidezy.prototype._stopAutoplay = function () {
 };
 
 Slidezy.prototype._autoplay = function () {
-    if (!this.options.autoplay || this.autoplayInterval) return;
+    if (!this.options.autoplay) return;
+
+    this._stopAutoplay();
 
     this.autoplayInterval = setInterval(() => {
         this.moveSlide(this.options.slidesToScroll);
@@ -186,6 +188,54 @@ Slidezy.prototype._createDots = function () {
     this.container.appendChild(this.dotsContainer);
 };
 
+Slidezy.prototype._addSwipeEvents = function () {
+    if (!this.options.swipeAble) return;
+
+    let startX = 0;
+    let isDragging = false;
+
+    const onDragStart = (e) => {
+        isDragging = true;
+        startX = e.type.includes("mouse") ? e.pageX : e.touches[0].clientX;
+        this._stopAutoplay(); // Dừng autoplay khi kéo
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        const currentX = e.type.includes("mouse") ? e.pageX : e.touches[0].clientX;
+        const diffX = currentX - startX;
+        this.track.style.transform = `translateX(${
+            this.offset + (diffX / this.container.clientWidth) * 100
+        }%)`;
+    };
+
+    const onDragEnd = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const endX = e.type.includes("mouse") ? e.pageX : e.changedTouches[0].clientX;
+        const diff = endX - startX;
+
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+                this.moveSlide(-this.options.slidesToScroll); // Swipe sang phải
+            } else {
+                this.moveSlide(this.options.slidesToScroll); // Swipe sang trái
+            }
+        }
+
+        this._autoplay(); // Khởi động lại autoplay nếu cần
+    };
+
+    this.track.addEventListener("mousedown", onDragStart);
+    this.track.addEventListener("mousemove", onDragMove);
+    this.track.addEventListener("mouseup", onDragEnd);
+    this.track.addEventListener("mouseleave", onDragEnd);
+
+    this.track.addEventListener("touchstart", onDragStart, { passive: true });
+    this.track.addEventListener("touchmove", onDragMove, { passive: true });
+    this.track.addEventListener("touchend", onDragEnd);
+};
+
 Slidezy.prototype._init = function () {
     this._createContent();
     this._createTrack();
@@ -194,6 +244,7 @@ Slidezy.prototype._init = function () {
     this._createDots();
     this._updatePosition();
     this._autoplay();
+    this._addSwipeEvents();
 };
 
 function Slidezy(selector, options) {
@@ -211,6 +262,7 @@ function Slidezy(selector, options) {
             arrowsText: ["<", ">"],
             prevArrowButton: null,
             nextArrowButton: null,
+            swipeAble: true,
         },
         options
     );
@@ -244,4 +296,5 @@ const mySlider = new Slidezy("#my-slider", {
     // prevArrowButton: ".nav-prev",
     // nextArrowButton: ".nav-next",
     // arrowsText: ["Lùi", "Tiến"],
+    swipeAble: true,
 });
