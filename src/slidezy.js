@@ -87,7 +87,7 @@ Slidezy.prototype._getRealSlideCount = function () {
 Slidezy.prototype._updatePosition = function (instant = false) {
     this.offset = -(this.currentSlideIndex * (100 / this.options.slideToShow));
     this.track.style.transform = `translateX(${this.offset}%)`;
-    this.track.style.transition = instant ? "none" : "transform 0.5s ease";
+    this.track.style.transition = instant ? "none" : `transform ${this.options.speed}ms ease`;
     if (!instant) {
         this._updateDot();
     }
@@ -121,14 +121,25 @@ Slidezy.prototype.moveSlide = function (step) {
     this._checkDisabledNav();
 };
 
+Slidezy.prototype._stopAutoplay = function () {
+    if (this.autoplayInterval) {
+        clearInterval(this.autoplayInterval);
+        this.autoplayInterval = null;
+    }
+};
+
 Slidezy.prototype._autoplay = function () {
-    if (this.options.autoplay) {
-        this.autoplayInterval = setInterval(() => {
-            this.moveSlide(this.options.slidesToScroll);
-        }, this.options.autoplaySpeed);
+    if (!this.options.autoplay || this.autoplayInterval) return;
+
+    this.autoplayInterval = setInterval(() => {
+        this.moveSlide(this.options.slidesToScroll);
+    }, this.options.autoplayTimeout);
+
+    if (this.options.autoplayHoverPause) {
         this.container.onmouseenter = () => {
-            clearInterval(this.autoplayInterval);
+            this._stopAutoplay();
         };
+
         this.container.onmouseleave = () => {
             this._autoplay();
         };
@@ -192,7 +203,9 @@ function Slidezy(selector, options) {
             loop: false,
             slidesToScroll: 1,
             autoplay: false,
-            autoplaySpeed: 3000,
+            speed: 500,
+            autoplayTimeout: 3000,
+            autoplayHoverPause: true,
             dots: false,
             arrows: true,
             arrowsText: ["<", ">"],
@@ -221,9 +234,11 @@ function Slidezy(selector, options) {
 const mySlider = new Slidezy("#my-slider", {
     loop: true,
     slideToShow: 2,
-    slidesToScroll: 3,
-    autoplay: false,
-    autoplaySpeed: 5000,
+    slidesToScroll: 2,
+    autoplay: true,
+    autoplayTimeout: 3000,
+    // autoplayHoverPause: false,
+    speed: 500,
     dots: true,
     arrows: true,
     // prevArrowButton: ".nav-prev",
