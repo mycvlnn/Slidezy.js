@@ -8,17 +8,15 @@ Slidezy.prototype._createTrack = function () {
     this.track = document.createElement("div");
     this.track.classList.add("slidezy-track");
     if (this.options.loop) {
-        const clonedHead = this.slides
-            .slice(-this.options.items)
-            .map((node) => node.cloneNode(true));
+        const clonedHead = this.slides.slice(-this.clonedItems).map((node) => node.cloneNode(true));
         const clonedTail = this.slides
-            .slice(0, this.options.items)
+            .slice(0, this.clonedItems)
             .map((node) => node.cloneNode(true));
         this.slides = [...clonedHead, ...this.slides, ...clonedTail];
     }
     this.slides.forEach((slide) => {
         slide.classList.add("slidezy-slide");
-        slide.style.flexBasis = `${100 / this.options.items}%`;
+        slide.style.flexBasis = `${100 / this.options.slideToShow}%`;
         this.track.appendChild(slide);
     });
 
@@ -69,7 +67,7 @@ Slidezy.prototype._checkDisabledNav = function () {
         this.prevButton.classList.remove("disabled");
     }
 
-    if (this.currentSlideIndex >= this.slides.length - this.options.items) {
+    if (this.currentSlideIndex >= this.slides.length - this.options.slideToShow) {
         this.nextDisabled = true;
         this.nextButton.setAttribute("disabled", true);
         this.nextButton.classList.add("disabled");
@@ -82,12 +80,12 @@ Slidezy.prototype._checkDisabledNav = function () {
 
 // Lấy ra số lượng slide nhìn bằng mắt thường thực tế mà không tính slide giả lập (2 đầu và 2 cuối)
 Slidezy.prototype._getRealSlideCount = function () {
-    return this.slides.length - (this.options.loop ? this.options.items * 2 : 0);
+    return this.slides.length - (this.options.loop ? this.clonedItems * 2 : 0);
 };
 
 // Hàm thực hiện cập nhật vị trí của track
 Slidezy.prototype._updatePosition = function (instant = false) {
-    this.offset = -(this.currentSlideIndex * (100 / this.options.items));
+    this.offset = -(this.currentSlideIndex * (100 / this.options.slideToShow));
     this.track.style.transform = `translateX(${this.offset}%)`;
     this.track.style.transition = instant ? "none" : "transform 0.5s ease";
     if (!instant) {
@@ -99,7 +97,7 @@ Slidezy.prototype._updatePosition = function (instant = false) {
 // step = 1: next, step = -1: prev
 Slidezy.prototype.moveSlide = function (step) {
     if (this._isTransitioning) return;
-    const maxIndex = this.slides.length - this.options.items;
+    const maxIndex = this.slides.length - this.options.slideToShow;
     this.currentSlideIndex = Math.min(Math.max(this.currentSlideIndex + step, 0), maxIndex);
 
     // Trường hợp cho phép loop
@@ -108,10 +106,10 @@ Slidezy.prototype.moveSlide = function (step) {
 
         this.track.ontransitionend = () => {
             const slideCount = this._getRealSlideCount();
-            if (this.currentSlideIndex < this.options.items) {
+            if (this.currentSlideIndex < this.clonedItems) {
                 this.currentSlideIndex += slideCount;
                 this._updatePosition(true);
-            } else if (this.currentSlideIndex > slideCount) {
+            } else if (this.currentSlideIndex >= slideCount + this.clonedItems) {
                 this.currentSlideIndex -= slideCount;
                 this._updatePosition(true);
             }
@@ -141,9 +139,9 @@ Slidezy.prototype._updateDot = function () {
     if (!this.options.dots) return;
     const slideCount = this._getRealSlideCount();
     const realIndex = this.options.loop
-        ? (this.currentSlideIndex - this.options.items + slideCount) % slideCount
+        ? (this.currentSlideIndex - this.clonedItems + slideCount) % slideCount
         : this.currentSlideIndex;
-    const pageIndex = Math.floor(realIndex / this.options.items);
+    const pageIndex = Math.floor(realIndex / this.options.slideToShow);
 
     this.dots.forEach((dot, index) => {
         dot.classList.toggle("active", index === pageIndex);
@@ -156,7 +154,7 @@ Slidezy.prototype._createDots = function () {
     this.dotsContainer = document.createElement("div");
     this.dotsContainer.classList.add("slidezy-dots");
     const slideCount = this._getRealSlideCount();
-    const pageCount = Math.ceil(slideCount / this.options.items);
+    const pageCount = Math.ceil(slideCount / this.options.slideToShow);
     for (let i = 0; i < pageCount; i++) {
         const dot = document.createElement("button");
         dot.classList.add("slidezy-dot");
@@ -165,8 +163,8 @@ Slidezy.prototype._createDots = function () {
         // Xử lý sự kiện click cho từng dot
         dot.onclick = () => {
             this.currentSlideIndex = this.options.loop
-                ? i * this.options.items + this.options.items
-                : i * this.options.items;
+                ? i * this.options.slideToShow + this.clonedItems
+                : i * this.options.slideToShow;
             this._updatePosition();
         };
         this.dotsContainer.appendChild(dot);
@@ -190,7 +188,7 @@ Slidezy.prototype._init = function () {
 function Slidezy(selector, options) {
     this.options = Object.assign(
         {
-            items: 1,
+            slideToShow: 1,
             loop: false,
             slidesToScroll: 1,
             autoplay: false,
@@ -210,7 +208,10 @@ function Slidezy(selector, options) {
 
     this.container.classList.add("slidezy-wrapper");
     this.slides = Array.from(this.container.children);
-    this.currentSlideIndex = this.options.loop ? this.options.items : 0;
+    this.clonedItems = this.options.loop
+        ? this.options.slideToShow + this.options.slidesToScroll
+        : 0;
+    this.currentSlideIndex = this.clonedItems;
     this.prevDisabled = false;
     this.nextDisabled = false;
 
@@ -218,9 +219,9 @@ function Slidezy(selector, options) {
 }
 
 const mySlider = new Slidezy("#my-slider", {
-    loop: false,
-    items: 1,
-    slidesToScroll: 2,
+    loop: true,
+    slideToShow: 2,
+    slidesToScroll: 3,
     autoplay: false,
     autoplaySpeed: 5000,
     dots: true,
@@ -229,6 +230,3 @@ const mySlider = new Slidezy("#my-slider", {
     // nextArrowButton: ".nav-next",
     // arrowsText: ["Lùi", "Tiến"],
 });
-
-// (6) 1 2 3 4 5 6 (1)
-//  0  1 2 3 4 5 6  7
