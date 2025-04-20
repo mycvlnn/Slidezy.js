@@ -83,28 +83,12 @@ Slidezy.prototype._getRealSlideCount = function () {
     return this.slides.length - (this.options.loop ? this.clonedItems * 2 : 0);
 };
 
-// Hàm thực hiện cập nhật vị trí của track
-Slidezy.prototype._updatePosition = function (instant = false) {
-    this.offset = -(this.currentSlideIndex * (100 / this.options.slideToShow));
-    this.track.style.transform = `translateX(${this.offset}%)`;
-    this.track.style.transition = instant ? "none" : `transform ${this.options.speed}ms ease`;
-    if (!instant) {
-        this._updateDot();
-    }
-};
-
-// Hàm thực hiện di chuyển slide
-// step = 1: next, step = -1: prev
-Slidezy.prototype.moveSlide = function (step) {
-    if (this._isTransitioning) return;
-    const maxIndex = this.slides.length - this.options.slideToShow;
-    this.currentSlideIndex = Math.min(Math.max(this.currentSlideIndex + step, 0), maxIndex);
-
+Slidezy.prototype._handleTransitionEnd = function () {
     // Trường hợp cho phép loop
     if (this.options.loop) {
         this._isTransitioning = true;
 
-        this.track.ontransitionend = () => {
+        setTimeout(() => {
             const slideCount = this._getRealSlideCount();
             if (this.currentSlideIndex < this.clonedItems) {
                 this.currentSlideIndex += slideCount;
@@ -114,9 +98,61 @@ Slidezy.prototype.moveSlide = function (step) {
                 this._updatePosition(true);
             }
             this._isTransitioning = false;
-        };
+        }, this.options.speed);
+    }
+};
+
+Slidezy.prototype._handleChange = function () {
+    if (this.options.onChange) {
+        const realIndex = this._getRealIndex();
+        this.options.onChange(realIndex);
+    }
+};
+
+// Hàm thực hiện cập nhật vị trí của track
+Slidezy.prototype._updatePosition = function (instant = false) {
+    this.offset = -(this.currentSlideIndex * (100 / this.options.slideToShow));
+    this.track.style.transform = `translateX(${this.offset}%)`;
+    this.track.style.transition = instant ? "none" : `transform ${this.options.speed}ms ease`;
+    if (!instant) {
+        this._updateDot();
     }
 
+    if (this.currentSlideIndex !== this.prevSlideIndex) {
+        this.prevSlideIndex = this.currentSlideIndex;
+        this._handleChange();
+    }
+};
+
+// Lấy ra index thực tế trừ đi số lượng clone ở đầu
+Slidezy.prototype._getRealIndex = function () {
+    const slideCount = this._getRealSlideCount();
+    return this.options.loop
+        ? (this.currentSlideIndex - this.clonedItems + slideCount) % slideCount
+        : this.currentSlideIndex;
+};
+
+Slidezy.prototype._getMaxSlideIndex = function () {
+    return this.slides.length - this.options.slideToShow;
+};
+
+Slidezy.prototype.slideToIndex = function (index) {
+    if (this._isTransitioning) return;
+    const maxIndex = this._getMaxSlideIndex();
+    const realIndex = this.options.loop ? index + this.clonedItems : index;
+    this.currentSlideIndex = Math.min(Math.max(realIndex, 0), maxIndex);
+    this._handleTransitionEnd();
+    this._updatePosition();
+    this._checkDisabledNav();
+};
+
+// Hàm thực hiện di chuyển slide
+// step = 1: next, step = -1: prev
+Slidezy.prototype.moveSlide = function (step) {
+    if (this._isTransitioning) return;
+    const maxIndex = this._getMaxSlideIndex();
+    this.currentSlideIndex = Math.min(Math.max(this.currentSlideIndex + step, 0), maxIndex);
+    this._handleTransitionEnd();
     this._updatePosition();
     this._checkDisabledNav();
 };
@@ -148,12 +184,10 @@ Slidezy.prototype._autoplay = function () {
     }
 };
 
+// Hàm cập nhật trạng thái của các dấu chấm
 Slidezy.prototype._updateDot = function () {
     if (!this.options.dots) return;
-    const slideCount = this._getRealSlideCount();
-    const realIndex = this.options.loop
-        ? (this.currentSlideIndex - this.clonedItems + slideCount) % slideCount
-        : this.currentSlideIndex;
+    const realIndex = this._getRealIndex();
     const pageIndex = Math.floor(realIndex / this.options.slideToShow);
 
     this.dots.forEach((dot, index) => {
@@ -263,6 +297,7 @@ function Slidezy(selector, options) {
             prevArrowButton: null,
             nextArrowButton: null,
             swipeAble: true,
+            onChange: null,
         },
         options
     );
@@ -276,6 +311,7 @@ function Slidezy(selector, options) {
     this.clonedItems = this.options.loop
         ? this.options.slideToShow + this.options.slidesToScroll
         : 0;
+    this.prevSlideIndex = this.clonedItems;
     this.currentSlideIndex = this.clonedItems;
     this.prevDisabled = false;
     this.nextDisabled = false;
@@ -297,4 +333,7 @@ const mySlider = new Slidezy("#my-slider", {
     // nextArrowButton: ".nav-next",
     // arrowsText: ["Lùi", "Tiến"],
     swipeAble: true,
+    onChange: (index) => {
+        console.log("Slide changed to index:", index);
+    },
 });
